@@ -5,7 +5,7 @@
 StatTheGit is a python based tool to fetch, maintain and display GitHub clone and views statistics. By default GitHub only maintains GitHub repository statistics
 for 14 days only. This repository can be used to maintain a local copy of the repository statistics.
 
-**This project was forked from StatTheGit repo, with a few fixes added for fetch_stats.py.**
+***This project was forked from [StatTheGit](https://github.com/aqeelanwar/StatTheGit) repo, with a few fixes added for fetch_stats.py***
 
 ## Detailed Documentation:
 Detailed documentation on this repository can be found [here](https://medium.com/@aqeel.anwar/maintaining-github-stats-for-more-than-14-days-31653bd1d7e1?sk=0d4a7e0c1b21df8a6e715719109dcecc)
@@ -31,7 +31,7 @@ python fetch_stats.py --GitToken <GitToken> --username <GitHub Username> --RepoN
 |:---------:	|:--------------------------------------------------------------------------------------------------------------------------------------------:	|
 |  GitToken 	|                                                         GitHub personal access token                                                         	|
 |  username 	|                                                              The Github username                                                             	|
-| RepoNames 	| Name of the repository or repositories separated by space. If set to 'all', all the repositories under the username profile will be processed |
+| RepoNames 	| Name of the repository or repositories separated by space. If set to "all", all the repositories under the username profile will be processed; if set to "allpush", all repositories that user has push access to will be processed. |
 
 Running fetch_stats.py will create a folder repo_stats/<-username->. The view and clone stats for the mentioned repositories will be fetched from the GitHub profile and saved as a csv file. If the csv files for the repository already exists the code appends the fetched data to existing stats taking care of issues such as duplicate stats, missing dates etc.
 
