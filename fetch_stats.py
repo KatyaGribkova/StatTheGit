@@ -4,6 +4,7 @@
 
 from github import Github
 import datetime
+import time
 import csv
 from collections import OrderedDict
 from shutil import copy2
@@ -41,39 +42,47 @@ if __name__ == "__main__":
     g = Github(args.GitToken)
     repo_names = []
     # Check the repositories
-    if "all" not in args.RepoNames:
+    if "all" not in args.RepoNames and "allpush" not in args.RepoNames:
         # repo_names.append(args.RepoNames)
-        repo_names = args.RepoNames
+        repo_names = args.RepoNames[0].partition(" ")
+        repo_names = [n for n in repo_names if n != " "]
     else:
         for repo in g.get_user().get_repos():
-            ccc = repo._full_name.value
-            if args.username in repo._full_name.value:
-                repo_n = repo._full_name.value
-            repo_names.append(repo_n)
+            if "allpush" in args.RepoNames or ("all" in args.RepoNames and args.username in repo._full_name.value):
+                repo_names.append(repo._full_name.value)
+ 
+            
 
     for repo_n in tqdm(repo_names):
         # Process each repository
-        repo_str = args.username + "/" + repo_n
-        print("Processing: ", repo_n)
+        repo_str = repo_n
+        if "all" not in args.RepoNames and "allpush" not in args.RepoNames: repo_str = args.username + "/" + repo_n
+        print("Processing: ", repo_str)
+        
         repo = g.get_repo(repo_str)
 
         # Get repository clones statistics
         clone_stat = repo.get_clones_traffic()
         clone_stat = clone_stat["clones"]
 
+
         # Get repository views statistics
         traffic_stat = repo.get_views_traffic()
         traffic_stat = traffic_stat["views"]
+        
 
         # The stats fetched from GitHub packaged has date missing where the clones/views are zero.
         # The following lines appends missing dates and orders them.
 
-        if len(clone_stat) > 0:
-            # Find the earliest date between the views and clones
-            if clone_stat[0].timestamp.date() < traffic_stat[0].timestamp.date():
-                earliest_date = clone_stat[0].timestamp.date()
-            else:
-                earliest_date = traffic_stat[0].timestamp.date()
+        if len(clone_stat) > 0 or len(traffic_stat) > 0:
+            if len(clone_stat) > 0: earliest_date = clone_stat[0].timestamp.date()
+            if len(traffic_stat) > 0: earliest_date = traffic_stat[0].timestamp.date()
+            if len(clone_stat) > 0 and len(traffic_stat) > 0:
+                # Find the earliest date between the views and clones
+                if clone_stat[0].timestamp.date() < traffic_stat[0].timestamp.date():
+                    earliest_date = clone_stat[0].timestamp.date()
+                else:
+                    earliest_date = traffic_stat[0].timestamp.date()
 
             date_array = []
             clone_array = {}
@@ -94,8 +103,12 @@ if __name__ == "__main__":
             for v in traffic_stat:
                 traffic_array[str(v.timestamp.date())] = v.count
 
+            #For each repository, check the username... 
+            #Needed for getting stats for repositories that user has push access to, but that are not under their own username
+            username = repo_str.partition('/')[0]
+            
             # Create the folder of username if it doesn't exists
-            path_to_folder = "repo_stats/" + args.username
+            path_to_folder = "repo_stats/" + username
             if not os.path.exists(path_to_folder):
                 os.makedirs(path_to_folder)
 
@@ -124,19 +137,20 @@ if __name__ == "__main__":
                     csv_reader = csv.reader(csv_file, delimiter=",")
                     line_count = 0
                     for row in csv_reader:
-                        if line_count > 0:
-                            datetime_obj = datetime.datetime.strptime(
-                                row[0], "%Y-%m-%d"
-                            ).date()
-                            compare_date = datetime.datetime.strptime(
-                                str(earliest_date), "%Y-%m-%d"
-                            ).date()
-
-                            if datetime_obj < compare_date:
-                                writer.writerow([row[0], row[1], row[2]])
-                            else:
-                                break
-                        line_count += 1
+                        if len(row) > 0:
+                            if line_count > 0:
+                                datetime_obj = datetime.datetime.strptime(
+                                    row[0], "%Y-%m-%d"
+                                ).date()
+                                compare_date = datetime.datetime.strptime(
+                                    str(earliest_date), "%Y-%m-%d"
+                                ).date()
+    
+                                if datetime_obj < compare_date:
+                                    writer.writerow([row[0], row[1], row[2]])
+                                else:
+                                    break
+                            line_count += 1
 
             for (key_clone, value_clone), (key_traffic, value_traffic) in zip(
                 clone_array.items(), traffic_array.items()
@@ -151,10 +165,18 @@ if __name__ == "__main__":
             with open(csv_str) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=",")
                 for row in csv_reader:
-                    writer.writerow([row[0], row[1], row[2]])
+                    if len(row) > 0: writer.writerow([row[0], row[1], row[2]])
             csv_file.close()
 
-            # Remove temp file.
-            os.remove(csv_str_temp)
+            # Remove temp file via try loop.
+            retries = 5
+            sleeptime = 3
+            for i in range(retries):
+                try:
+                    os.remove(csv_str_temp)
+                except WindowsError:
+                    time.sleep(sleeptime)
+                else:
+                    break
 
 
